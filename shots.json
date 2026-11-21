@@ -1,5 +1,1 @@
-[
-  { "name": "1-cover.jpg", "query": "?shot=cover&photo=pier&caption=Sunset%20Heist", "w": 1080, "h": 1080 },
-  { "name": "2-editor.jpg", "query": "?shot=editor&photo=boulevard&caption=Boulevard%20Queen", "w": 1280, "h": 720 },
-  { "name": "3-cover.jpg", "query": "?shot=cover&photo=boulevard&caption=Boulevard%20Queen", "w": 1080, "h": 1080 }
-]
+[{"h":720,"name":"1-cover.jpg","query":"?shot=editor&layout=triptych&theme=neon&size=1920x1080&title=Neon%20Coast&subtitle=A%20Sunset%20Drive%20Story&photos=boulevard,pier,boulevard&oy=0.08,0,0.08","w":1280},{"h":720,"name":"2-editor.jpg","query":"?shot=editor&layout=triptych&theme=neon&size=1080x1080&title=Neon%20Coast&subtitle=A%20Sunset%20Drive%20Story&photos=boulevard,pier,boulevard","w":1280},{"h":1024,"name":"3-cover-square.jpg","query":"?shot=editor&layout=grid&theme=sunset&size=1080x1080&title=Sunset%20Run&subtitle=Chasing%20The%20Last%20Light&photos=pier,boulevard,pier,boulevard&oy=0.1,0.22,0.1,0.22","w":1024},{"h":1280,"name":"4-cover-portrait.jpg","query":"?shot=editor&layout=triptych&theme=teal&size=1080x1350&title=Teal%20Coast&subtitle=Where%20The%20Palms%20Meet%20The%20Sea&photos=boulevard,pier,boulevard","w":1024}]
