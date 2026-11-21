@@ -4,7 +4,7 @@
 // lets each panel be cropped and positioned, edits the caption, and exports
 // the cover as a real PNG in 1080 x 1080, 1080 x 1350 or 1920 x 1080.
 // A `?shot=` query sets up a fixed scene for a screenshot (./shots.js).
-import { drawCoverArt, panelRectsOnCanvas, blankPanel, blankState, LAYOUTS, THEMES, SIZES } from './cover.js';
+import { drawCoverArt, panelRectsOnCanvas, panLimits, blankPanel, blankState, LAYOUTS, THEMES, SIZES } from './cover.js';
 import { runShot } from './shots.js';
 
 const canvas = document.getElementById('cover');
@@ -76,7 +76,11 @@ function setPhotoIntoPanel(fileOrUrl, index, done) {
   if (typeof fileOrUrl === 'string') {
     loadImage(fileOrUrl).then(apply, () => setStatus('That sample could not be loaded.'));
   } else {
-    loadImage(URL.createObjectURL(fileOrUrl)).then(apply, () => setStatus('That file is not a readable image.'));
+    const url = URL.createObjectURL(fileOrUrl);
+    loadImage(url).then(
+      (img) => { URL.revokeObjectURL(url); apply(img); },
+      () => { URL.revokeObjectURL(url); setStatus('That file is not a readable image.'); },
+    );
   }
 }
 
@@ -92,7 +96,11 @@ function fillAllPanels(fileOrUrl) {
   if (typeof fileOrUrl === 'string') {
     loadImage(fileOrUrl).then(apply, () => setStatus('That sample could not be loaded.'));
   } else {
-    loadImage(URL.createObjectURL(fileOrUrl)).then(apply, () => setStatus('That file is not a readable image.'));
+    const url = URL.createObjectURL(fileOrUrl);
+    loadImage(url).then(
+      (img) => { URL.revokeObjectURL(url); apply(img); },
+      () => { URL.revokeObjectURL(url); setStatus('That file is not a readable image.'); },
+    );
   }
 }
 
@@ -189,7 +197,7 @@ canvas.addEventListener('pointerdown', (e) => {
   const hit = panelAt(p);
   if (hit < 0) return;
   selected = hit;
-  canvas.setPointerCapture(e.pointerId);
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* drag still works without capture */ }
   dragging = { x: p.x, y: p.y, ox: state.panels[hit].ox, oy: state.panels[hit].oy };
   redraw();
 });
@@ -201,8 +209,15 @@ canvas.addEventListener('pointermove', (e) => {
   const panel = state.panels[selected];
   panel.ox = dragging.ox + (p.x - dragging.x) / rc.w;
   panel.oy = dragging.oy + (p.y - dragging.y) / rc.h;
-  panel.ox = Math.max(-1, Math.min(1, panel.ox));
-  panel.oy = Math.max(-1, Math.min(1, panel.oy));
+  // Stop the drag where the photo would stop covering the panel.
+  if (panel.img) {
+    const lim = panLimits(panel.img, rc, panel);
+    panel.ox = Math.max(-lim.ox, Math.min(lim.ox, panel.ox));
+    panel.oy = Math.max(-lim.oy, Math.min(lim.oy, panel.oy));
+  } else {
+    panel.ox = Math.max(-1, Math.min(1, panel.ox));
+    panel.oy = Math.max(-1, Math.min(1, panel.oy));
+  }
   redraw();
 });
 canvas.addEventListener('pointerup', () => { dragging = null; });

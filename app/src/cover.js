@@ -253,17 +253,37 @@ function drawNeonGrid(ctx, w, topY, h, theme) {
   ctx.restore();
 }
 
-function drawPhoto(ctx, img, rect, panel) {
+// Largest pan (in panel fractions) that still keeps the photo covering the
+// panel: any further and the sky behind the photo would show through.
+// For `contain` the photo is smaller than the panel, so it stays centred.
+export function panLimits(img, rect, panel) {
   const iw = img.naturalWidth;
   const ih = img.naturalHeight;
+  if (!iw || !ih) return { ox: 0, oy: 0, scale: 1 };
   let scale = panel.fit === 'contain'
     ? Math.min(rect.w / iw, rect.h / ih)
     : Math.max(rect.w / iw, rect.h / ih);
   scale *= panel.zoom;
+  return {
+    ox: Math.max(0, (iw * scale - rect.w) / (2 * rect.w)),
+    oy: Math.max(0, (ih * scale - rect.h) / (2 * rect.h)),
+    scale,
+  };
+}
+
+function drawPhoto(ctx, img, rect, panel) {
+  const iw = img.naturalWidth;
+  const ih = img.naturalHeight;
+  const lim = panLimits(img, rect, panel);
+  const scale = lim.scale;
   const dw = iw * scale;
   const dh = ih * scale;
-  const cx = rect.x + rect.w / 2 + panel.ox * rect.w;
-  const cy = rect.y + rect.h / 2 + panel.oy * rect.h;
+  // Clamp the pan at draw time too, so a stored offset from an older
+  // version (or a shot scene) can never leave a gap at a panel edge.
+  const ox = Math.max(-lim.ox, Math.min(lim.ox, panel.ox));
+  const oy = Math.max(-lim.oy, Math.min(lim.oy, panel.oy));
+  const cx = rect.x + rect.w / 2 + ox * rect.w;
+  const cy = rect.y + rect.h / 2 + oy * rect.h;
   ctx.save();
   ctx.beginPath();
   ctx.rect(rect.x, rect.y, rect.w, rect.h);
@@ -339,9 +359,18 @@ function drawTitleBlock(ctx, w, bandY, bandH, state, theme) {
     ctx.restore();
   }
   if (subtitle) {
-    const subSize = Math.max(12, bandH * 0.13);
-    ctx.font = `700 ${subSize}px Arial, sans-serif`;
-    try { ctx.letterSpacing = `${Math.round(subSize * 0.32)}px`; } catch { /* older canvas */ }
+    // Shrink the subtitle (font and tracking together) until it fits,
+    // so a long subtitle is never chopped at the cover's edges.
+    let subSize = Math.max(12, bandH * 0.13);
+    const setSubFont = (s) => {
+      ctx.font = `700 ${s}px Arial, sans-serif`;
+      try { ctx.letterSpacing = `${Math.round(s * 0.32)}px`; } catch { /* older canvas */ }
+    };
+    setSubFont(subSize);
+    while (ctx.measureText(subtitle).width > w * 0.92 && subSize > 10) {
+      subSize -= 1;
+      setSubFont(subSize);
+    }
     ctx.fillStyle = theme.subtitle;
     ctx.fillText(subtitle, cx, bandY + bandH * 0.8);
   }
