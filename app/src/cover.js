@@ -88,9 +88,12 @@ export const THEMES = {
 };
 
 // A panel's photo state: the image (or null), zoom, pan offset in panel
-// fractions, and whether the photo fills or fits the panel.
+// fractions, and whether the photo fills or fits the panel. `autoFramed`
+// marks a framing the app chose on load (top-biased, see defaultOy);
+// the moment the person drags, zooms or crops a panel themselves it
+// turns false and the layout switch below leaves their framing alone.
 export function blankPanel() {
-  return { img: null, zoom: 1, ox: 0, oy: 0, fit: 'cover' };
+  return { img: null, zoom: 1, ox: 0, oy: 0, fit: 'cover', autoFramed: true };
 }
 
 export function blankState() {
@@ -251,6 +254,16 @@ function drawNeonGrid(ctx, w, topY, h, theme) {
     step *= 1.55;
   }
   ctx.restore();
+}
+
+// Default vertical framing for a freshly loaded photo: bias toward the
+// top of the photo (where faces usually sit) whenever the panel crops
+// the photo vertically, so a wide panel does not cut the subject's head
+// off. 0.65 of the way to the top edge keeps a little room above the
+// subject instead of pinning it to the frame. 0 when nothing is cropped
+// vertically (tall panels, or fit=contain, where the photo is centred).
+export function defaultOy(img, rect, panel) {
+  return panLimits(img, rect, panel).oy * 0.65;
 }
 
 // Largest pan (in panel fractions) that still keeps the photo covering the

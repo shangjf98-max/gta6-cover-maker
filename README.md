@@ -17,7 +17,7 @@ Then open http://localhost:8080 in desktop Chrome. No build step, no network req
 ## How it works
 
 1. Pick a layout: Triple Strip, Four Square, Hero + Two, or Wide + Two.
-2. Load photos from your machine (file picker or drag and drop) — one photo can fill every panel, or each panel can hold a different photo. Click a panel to select it, drag to move its photo, scroll to zoom, or use the zoom slider and fill/fit switch.
+2. Load photos from your machine (file picker or drag and drop) — one photo can fill every panel, or each panel can hold a different photo. Photos are framed toward the top automatically so faces stay in frame; click a panel to select it, drag to move its photo, scroll to zoom, or use the zoom slider and fill/fit switch.
 3. Edit the title and subtitle, pick a colour grade (Neon Pink, Sunset Orange, Teal Coast) and a title size.
 4. Choose an export size and hit Export PNG.
 

@@ -4,7 +4,7 @@
 // lets each panel be cropped and positioned, edits the caption, and exports
 // the cover as a real PNG in 1080 x 1080, 1080 x 1350 or 1920 x 1080.
 // A `?shot=` query sets up a fixed scene for a screenshot (./shots.js).
-import { drawCoverArt, panelRectsOnCanvas, panLimits, blankPanel, blankState, LAYOUTS, THEMES, SIZES } from './cover.js';
+import { drawCoverArt, panelRectsOnCanvas, panLimits, defaultOy, blankPanel, blankState, LAYOUTS, THEMES, SIZES } from './cover.js';
 import { runShot } from './shots.js';
 
 const canvas = document.getElementById('cover');
@@ -68,7 +68,9 @@ function setStatus(text) {
 
 function setPhotoIntoPanel(fileOrUrl, index, done) {
   const apply = async (img) => {
-    state.panels[index] = { ...blankPanel(), img };
+    const panel = { ...blankPanel(), img };
+    panel.oy = defaultOy(img, panelRectsOnCanvas(canvas, state)[index], panel);
+    state.panels[index] = panel;
     redraw();
     setStatus(`Photo loaded into panel ${index + 1}.`);
     done?.();
@@ -87,8 +89,11 @@ function setPhotoIntoPanel(fileOrUrl, index, done) {
 // Fill every panel of the current layout with one photo.
 function fillAllPanels(fileOrUrl) {
   const apply = async (img) => {
+    const rects = panelRectsOnCanvas(canvas, state);
     for (let i = 0; i < layoutCount(); i++) {
-      state.panels[i] = { ...blankPanel(), img };
+      const panel = { ...blankPanel(), img };
+      panel.oy = defaultOy(img, rects[i], panel);
+      state.panels[i] = panel;
     }
     redraw();
     setStatus(`One photo fills all ${layoutCount()} panels.`);
@@ -114,6 +119,13 @@ document.querySelectorAll('[data-layout]').forEach((b) => {
   b.addEventListener('click', () => {
     state.layout = b.dataset.layout;
     selected = Math.min(selected, layoutCount() - 1);
+    // Re-frame the panels the app framed itself for the new layout's
+    // panel shapes; panels the person dragged or zoomed keep their crop.
+    const rects = panelRectsOnCanvas(canvas, state);
+    for (let i = 0; i < layoutCount(); i++) {
+      const panel = state.panels[i];
+      if (panel.img && panel.autoFramed) panel.oy = defaultOy(panel.img, rects[i], panel);
+    }
     redraw();
     setStatus(`Layout: ${LAYOUTS[state.layout].name}.`);
   });
@@ -140,16 +152,24 @@ $('title-size').addEventListener('input', (e) => {
   redraw();
 });
 $('zoom').addEventListener('input', (e) => {
-  state.panels[selected].zoom = Number(e.target.value);
+  const panel = state.panels[selected];
+  panel.zoom = Number(e.target.value);
+  panel.autoFramed = false;
   redraw();
 });
 $('fit').addEventListener('change', (e) => {
-  state.panels[selected].fit = e.target.value;
+  const panel = state.panels[selected];
+  panel.fit = e.target.value;
+  if (panel.img && panel.autoFramed) {
+    panel.oy = defaultOy(panel.img, panelRectsOnCanvas(canvas, state)[selected], panel);
+  }
   redraw();
 });
 $('reset-panel').addEventListener('click', () => {
   const img = state.panels[selected].img;
-  state.panels[selected] = { ...blankPanel(), img };
+  const panel = { ...blankPanel(), img };
+  if (img) panel.oy = defaultOy(img, panelRectsOnCanvas(canvas, state)[selected], panel);
+  state.panels[selected] = panel;
   redraw();
   setStatus(`Panel ${selected + 1} crop reset.`);
 });
@@ -207,6 +227,7 @@ canvas.addEventListener('pointermove', (e) => {
   const rects = panelRectsOnCanvas(canvas, state);
   const rc = rects[selected];
   const panel = state.panels[selected];
+  panel.autoFramed = false;
   panel.ox = dragging.ox + (p.x - dragging.x) / rc.w;
   panel.oy = dragging.oy + (p.y - dragging.y) / rc.h;
   // Stop the drag where the photo would stop covering the panel.
@@ -229,6 +250,7 @@ canvas.addEventListener('wheel', (e) => {
   selected = hit;
   const panel = state.panels[hit];
   panel.zoom = Math.max(1, Math.min(3, panel.zoom * (e.deltaY < 0 ? 1.08 : 0.93)));
+  panel.autoFramed = false;
   redraw();
 }, { passive: false });
 
@@ -279,7 +301,7 @@ if (shot) {
       if (scene.subtitle !== undefined) { state.subtitle = scene.subtitle; $('subtitle').value = scene.subtitle; }
       const names = scene.photos ?? ['boulevard', 'pier', 'boulevard', 'pier'];
       for (let i = 0; i < layoutCount(); i++) {
-        state.panels[i] = { ...blankPanel(), img: await loadSample(names[i % names.length]) };
+        state.panels[i] = { ...blankPanel(), img: await loadSample(names[i % names.length]), autoFramed: false };
         if (scene.oy && Number.isFinite(scene.oy[i])) state.panels[i].oy = scene.oy[i];
       }
       redraw();
